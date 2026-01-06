@@ -12,11 +12,16 @@
 ## 快速配置
 
 ### 1. 环境准备
-在项目根目录创建 `.env` 文件（参考 `.env.example`）：
-```env
-NOTION_TOKEN=your_integration_token_here
-DATABASE_ID=your_database_id_here
-```
+- **安装依赖**：
+  ```bash
+  pip install -r requirements.txt
+  ```
+- **配置文件**：在项目根目录创建 `.env` 文件（参考 `.env.example`）：
+  ```env
+  NOTION_TOKEN=your_integration_token_here
+  DATABASE_ID=your_database_id_here
+  ```
+- **Notion 权限**：确保 Token 具备 `Read`, `Update`, `Insert` 权限，且目标数据库已通过 `Add connections` 关联此 Token。
 
 ### 2. 在 Trae 中添加 MCP
 打开 Trae 的 MCP 设置，添加以下配置：
