@@ -14,9 +14,11 @@ def get_token():
     """Retrieve Notion token from environment variables."""
     token = os.environ.get("NOTION_TOKEN")
     if not token:
-        # Try reading from .env if NOTION_TOKEN is not in environment
-        if os.path.exists(".env"):
-            with open(".env", "r", encoding="utf-8") as f:
+        # Try reading from .env using absolute path
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        env_path = os.path.join(base_dir, ".env")
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith("NOTION_TOKEN="):
@@ -29,6 +31,7 @@ def notion_request(method, path, body=None, version=NOTION_VERSION):
         return 0, {"error": "Missing NOTION_TOKEN"}
     
     url = API_BASE + path
+    # print(f"DEBUG: Requesting {method} {url}") # Helpful for debugging
     headers = {
         "Authorization": f"Bearer {token}",
         "Notion-Version": version,
@@ -92,13 +95,16 @@ def query_database(database_id: str, filter_params: dict = None) -> str:
         database_id: The ID of the Notion database.
         filter_params: Optional filter conditions (Notion API filter object).
     """
+    # Clean database_id (remove potential spaces or brackets)
+    database_id = database_id.strip().strip("<>").replace("-", "")
+    
     body = {}
     if filter_params:
         body["filter"] = filter_params
         
-    status, results = notion_request("POST", f"databases/{database_id}/query", body=body)
+    status, results = notion_request("POST", f"databases/{database_id}/query", body=body, version="2022-06-28")
     if status != 200:
-        return f"Error querying database: {json.dumps(results, indent=2)}"
+        return f"Error querying database (Status {status}): {json.dumps(results, indent=2, ensure_ascii=False)}"
     return json.dumps(results, indent=2, ensure_ascii=False)
 
 @mcp.tool
