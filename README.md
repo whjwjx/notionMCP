@@ -78,3 +78,32 @@ This project provides a Python script example that demonstrates how to use the l
 ## References
 - Upgrade guide: <https://developers.notion.com/docs/upgrade-guide-2025-09-03>
 - API introduction: <https://developers.notion.com/reference/intro>
+## 在 Trae 中添加 MCP（方式二：配置文件）
+- 使用 Trae 的 JSON 设置文件添加本地 MCP 服务器（配置文件路径因版本不同而异）
+- 将本仓库的 MCP Demo 指向 [mcp_demo.py](file:///d:/whj/notionMCP/mcp_demo.py)，传输方式为 stdio
+- 添加完成后在 Trae 中启动该服务器，并可调用工具 `add(a, b)`
+
+示例配置：
+
+```json
+{
+  "mcpServers": {
+    "fastmcp-demo": {
+      "command": "python",
+      "args": ["d:\\\\whj\\\\notionMCP\\\\mcp_demo.py"],
+      "workingDirectory": "d:\\\\whj\\\\notionMCP",
+      "transport": "stdio",
+      "env": {}
+    }
+  }
+}
+```
+
+运行与验证：
+- 启动本地服务器：
+
+```bash
+python d:\whj\notionMCP\mcp_demo.py
+```
+
+- 在 Trae 中看到服务器启动横幅并能调用 `add` 工具，例如 `5+4` 返回 `9`
