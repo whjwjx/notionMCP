@@ -31,15 +31,15 @@
     "notion-mcp": {
       "command": "python",
       "args": [
-        "D:\\github_items\\notionMCP\\notion_mcp.py"
+        "<YOUR_PROJECT_PATH>\\notion_mcp.py"
       ],
-      "workingDirectory": "D:\\github_items\\notionMCP",
+      "workingDirectory": "<YOUR_PROJECT_PATH>",
       "transport": "stdio"
     }
   }
 }
 ```
-*注意：请根据您的实际环境修改 `args` 和 `workingDirectory` 中的路径。*
+*注意：请将 `<YOUR_PROJECT_PATH>` 替换为您本机的项目实际绝对路径。*
 
 ## 使用示例
 
