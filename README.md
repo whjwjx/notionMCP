@@ -1,109 +1,51 @@
-# Notion API 2025‑09‑03 Demo (Multi‑Data‑Source Database)
+# Notion MCP Server
 
-This project provides a Python script example that demonstrates how to use the latest Notion API 2025‑09‑03 version to work with a multi‑data‑source database: discover data sources, create pages with a data source as the parent, and write text to the Work Content field. It also supports updating specific fields on existing pages.
+本项目提供了一个基于 Python 的 Notion MCP (Model Context Protocol) 服务，支持通过 IDE 插件（如 Trae）直接调用 Notion API。
 
-## Quick Start
-- Requirements
-  - Python 3.8+ (no third‑party dependencies)
-- Obtain the token
-  - Create a Notion integration and share the database with that integration
-  - Copy the integration token and set it as an environment variable or write it into `.env`
-- Configure `.env`
-  - Create a `.env` file in the project root (or edit it if it already exists):
+## 核心功能
+- **页面管理**：创建页面、更新属性（适配 Notion API 2025-09-03 版本）。
+- **多数据源支持**：支持 Notion 的 `data_sources` 概念，自动识别并关联父级数据源。
+- **MCP 集成**：通过 `fastmcp` 封装，支持 IDE 插件无缝调用。
 
-    ```
-    NOTION_TOKEN=your integration token
-    # Optional: default database ID (can also be provided at runtime via --database-id)
-    # DATABASE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    ```
+## 快速配置
 
-- Run
-  - Show help:
+### 1. 环境准备
+在项目根目录创建 `.env` 文件：
+```env
+NOTION_TOKEN=your_integration_token
+# 可选：默认数据库 ID
+# DATABASE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
 
-    ```bash
-    python d:\whj\notionMCP\notion_demo.py --help
-    ```
-
-  - Create a page and write Work Content:
-
-    ```bash
-    python d:\whj\notionMCP\notion_demo.py --database-id <database_id> --title "Test Page" --work-content "Work content added via API"
-    ```
-
-  - Update the Work Content of an existing page:
-
-    ```bash
-    python d:\whj\notionMCP\notion_demo.py --page-id <page_id> --work-content "Text to add"
-    ```
-
-## Parameters
-- `--database-id` Target database ID (copyable from the Notion app)
-- `--title` Title text for the new page (default: API Demo Page)
-- `--work-content` Text written to the Work Content property (default: Work content added via API)
-- `--page-id` If provided, update the specified page instead of creating a new one
-- `--work-prop` Work Content property name (default: Work Content; property type must be rich_text)
-- `--title-prop` Title property name (usually auto‑detected; explicit override if needed)
-- `--print-db` Print basic database information (per the 2025‑09‑03 response)
-- `--version` Notion-Version request header (default: 2025‑09‑03)
-
-## How It Works
-- Multi‑data‑source database
-  - The 2025‑09‑03 version introduces the `data_sources` concept; a database can contain multiple data sources
-  - For creating pages and establishing relations, use `data_source_id` as the parent or target
-- Data source discovery
-  - Use `GET /v1/databases/{database_id}` (Notion-Version: 2025‑09‑03) to fetch the `data_sources` list
-  - The script selects the first data source as the parent by default
-- Compatible property discovery
-  - For compatibility with existing property structures, the script reads `properties` under the older version (2022‑06‑28) and auto‑detects the title property name (for example, if your database title is “Date”)
-- Writing Work Content
-  - Treat `Work Content` as a rich_text property and write the provided text; if the property name differs, specify it via `--work-prop`
-
-## FAQ
-- “Name is not a property that exists.”
-  - The database title property may not be called “Name”. The script auto‑detects it; if auto‑detection fails, specify it explicitly via `--title-prop` (e.g., Date, Name)
-- Property type mismatch
-  - `Work Content` must be of rich_text type. If it is another type (e.g., multi_select), adjust `--work-prop` and modify the write format accordingly
-- Permissions and token
-  - Ensure the database is shared with your integration and the token is valid with sufficient permissions
-- Multiple data sources
-  - If the database contains multiple data sources, the script currently uses the first; you can extend it to filter by data source name
-
-## Security Tips
-- Do not commit `.env` to the repository; keep your token locally
-- If the token leaks, revoke it immediately in the Notion console and rotate it
-
-## Code Location
-- Main script: [notion_demo.py](file:///d:/whj/notionMCP/notion_demo.py)
-
-## References
-- Upgrade guide: <https://developers.notion.com/docs/upgrade-guide-2025-09-03>
-- API introduction: <https://developers.notion.com/reference/intro>
-## 在 Trae 中添加 MCP（方式二：配置文件）
-- 使用 Trae 的 JSON 设置文件添加本地 MCP 服务器（配置文件路径因版本不同而异）
-- 将本仓库的 MCP Demo 指向 [mcp_demo.py](file:///d:/whj/notionMCP/mcp_demo.py)，传输方式为 stdio
-- 添加完成后在 Trae 中启动该服务器，并可调用工具 `add(a, b)`
-
-示例配置：
-
+### 2. 在 Trae 中添加 MCP
+在 Trae 的 MCP 配置文件中添加以下内容：
 ```json
 {
   "mcpServers": {
-    "fastmcp-demo": {
-      "command": "python",
-      "args": ["d:\\\\whj\\\\notionMCP\\\\mcp_demo.py"],
-      "workingDirectory": "d:\\\\whj\\\\notionMCP",
-      "transport": "stdio",
-      "env": {}
+    "notion-mcp": {
+      "command": "<PYTHON_PATH>\\python.exe",
+      "args": [
+        "<PROJECT_PATH>\\mcp_demo.py"
+      ],
+      "workingDirectory": "<PROJECT_PATH>",
+      "transport": "stdio"
     }
   }
 }
 ```
+*请将 `<PYTHON_PATH>` 和 `<PROJECT_PATH>` 替换为您的实际路径。*
 
-运行与验证：
-- 启动本地服务器：
+## 使用说明
+- **创建/更新页面**：
+  ```bash
+  python notion_demo.py --database-id <id> --title "标题" --work-content "内容"
+  ```
+- **验证 MCP**：启动后在 IDE 中尝试调用 `add` 或 Notion 相关工具。
 
-```bash
-python d:\whj\notionMCP\mcp_demo.py
-```
+## 安全提示
+- **不要提交 `.env` 文件**。
+- 定期更换 Notion Integration Token 以确保安全。
 
-- 在 Trae 中看到服务器启动横幅并能调用 `add` 工具，例如 `5+4` 返回 `9`
+## 相关代码
+- [notion_demo.py](file:///d:/github_items/notionMCP/notion_demo.py)：Notion API 核心逻辑。
+- [mcp_demo.py](file:///d:/github_items/notionMCP/mcp_demo.py)：MCP 服务入口。
