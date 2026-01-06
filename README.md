@@ -1,67 +1,159 @@
-# Notion MCP Server
+<div align="center">
 
-本项目提供了一个基于 Python 的 Notion MCP (Model Context Protocol) 服务，支持通过 IDE 插件（如 Trae）直接调用 Notion API 进行数据库操作。
+# ⚡ Notion MCP Pro
+### 极智 Notion 连接器：让 AI 助手拥有“原生” Notion 操作超能力
 
-## 核心功能
+<p align="center">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" width="100" alt="Notion Logo" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg" width="100" alt="MCP Logo" />
+</p>
 
-- **动态属性检测**：自动识别 Notion 数据库的标题属性（Title Property），无需硬编码。
-- **页面管理**：支持查询、创建及更新页面内容，适配最新的 API 版本。
-- **稳定性增强**：针对不同操作自动选择最匹配的 Notion API 版本（如 2022-06-28 用于查询，2025-09-03 用于多数据源支持）。
-- **MCP 集成**：通过 `fastmcp` 封装，支持在 Trae 等 IDE 中通过对话直接操控 Notion。
+<p align="center">
+  <b>Notion</b> &nbsp; 🤝 &nbsp; <b>Model Context Protocol</b>
+</p>
 
-## 快速配置
+<p align="center">
+  <img src="https://img.shields.io/badge/Trae-000000?style=for-the-badge&logo=trae&logoColor=white" />
+  <img src="https://img.shields.io/badge/Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white" />
+  <img src="https://img.shields.io/badge/Claude-7C3AED?style=for-the-badge&logo=anthropic&logoColor=white" />
+  <img src="https://img.shields.io/badge/VS_Code-007ACC?style=for-the-badge&logo=visual-studio-code&logoColor=white" />
+</p>
 
-### 1. 环境准备
-- **安装依赖**：
-  ```bash
-  pip install -r requirements.txt
-  ```
-- **配置文件**：在项目根目录创建 `.env` 文件（参考 `.env.example`）：
-  ```env
-  NOTION_TOKEN=your_integration_token_here
-  DATABASE_ID=your_database_id_here
-  ```
-- **Notion 权限**：确保 Token 具备 `Read`, `Update`, `Insert` 权限，且目标数据库已通过 `Add connections` 关联此 Token。
 
-### 2. 在 Trae 中添加 MCP
-打开 Trae 的 MCP 设置，添加以下配置：
+<p align="center">
+  <img src="https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white" />
+  <img src="https://img.shields.io/badge/MCP-Protocol-orange?style=for-the-badge&logo=anthropic&logoColor=white" />
+</p>
+
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![MCP Protocol](https://img.shields.io/badge/Protocol-MCP-orange.svg)](https://modelcontextprotocol.io/)
+[![Notion API](https://img.shields.io/badge/Notion-API-black.svg)](https://developers.notion.com/)
+
+---
+
+**Notion MCP** 是一个让你的 AI 助手（Trae/Cursor/Claude）真正“读懂”并“操作” Notion 的桥梁。
+
+</div>
+
+不用再手动复制粘贴 ID，不用担心 API 报错，它就像给你的 AI 装了一个 **Notion 专用插件**。
+
+---
+
+## ✨ 为什么它这么强？ (Superpowers)
+
+| 🛠️ 核心功能 | 🎯 解决了什么？ | 🚀 爽在哪里？ |
+| :--- | :--- | :--- |
+| **属性“盲操”** | Notion 字段名改了、属性变了？不用管！ | 它会自动识别标题和属性，**闭眼下指令**也能成。 |
+| **版本“智脑”** | Notion API 经常变，老代码容易挂。 | 内部自带 **API 智能路由**，稳如老狗，怎么调都不宕机。 |
+| **持续进化** | 这种小工具最怕没人维护。 | **作者每天自用**，持续更新，发现 Bug 秒修复。 |
+---
+
+## 🛠️ 部署流程 (Deployment Workflow)
+
+请按照以下步骤在您的本地环境部署并激活服务：
+
+### 1. 克隆项目与安装环境
+首先，将项目克隆到本地并安装必要的依赖库：
+```bash
+# 克隆仓库 (请替换为您的实际 URL)
+git clone https://github.com/whjwjx/notionMCP.git
+cd notionMCP
+
+# 安装核心依赖
+pip install -r requirements.txt
+```
+
+### 2. 配置 Notion 凭证
+在项目根目录创建 `.env` 文件，用于存储私密配置：
+```env
+# 必填：Notion 机器人 Integration Token
+NOTION_TOKEN=your_integration_token_here
+
+# 必填：目标数据库 ID
+DATABASE_ID=your_database_id_here
+```
+> 💡 **重要**：请确保在 Notion 数据库设置中通过 `Add connections` 邀请了您的机器人。
+
+### 3. 本地验证与启动
+在接入 IDE 前，建议手动运行脚本以确认环境与凭证无误：
+```bash
+python notion_mcp.py
+```
+若未提示错误（控制台保持静默即表示 `stdio` 传输已就绪），则说明配置成功。
+
+### 4. IDE 接入 (以 Trae 为例)
+打开 Trae 的 MCP 设置（通常在 `Settings -> MCP`），添加如下 JSON 配置：
 ```json
 {
   "mcpServers": {
     "notion-mcp": {
       "command": "python",
-      "args": [
-        "<YOUR_PROJECT_PATH>\\notion_mcp.py"
-      ],
-      "workingDirectory": "<YOUR_PROJECT_PATH>",
+      "args": ["<您的项目绝对路径>\\notion_mcp.py"],
+      "workingDirectory": "<您的项目绝对路径>",
       "transport": "stdio"
     }
   }
 }
 ```
-*注意：请将 `<YOUR_PROJECT_PATH>` 替换为您本机的项目实际绝对路径。*
+*注意：请将 `<您的项目绝对路径>` 替换为您本地克隆项目的实际路径。*
 
-## 使用示例
+---
 
-在 Trae 对话框中，您可以直接发送以下类型的自然语言指令：
+## 📖 使用指南 (Usage Examples)
 
-- **数据库探索**：
-    - "帮我查一下 Notion 数据库 `<您的数据库ID>` 的结构信息。"
-- **页面搜索**：
-    - "在数据库 `<您的数据库ID>` 中搜一下标题包含 '测试' 的页面。"
-- **创建页面**：
-    - "在数据库 `<您的数据库ID>` 中新建一个页面，标题叫 '今日代码提交'，内容填 '完成了 MCP 接口的封装'。"
-- **更新内容**：
-    - "把这个 Notion 页面 `<您的页面ID>` 的工作内容更新为 '测试更新功能成功'。"
+您可以像和同事沟通一样，在 AI 对话框中下达指令。以下是核心功能的详细调用参考：
 
-## 项目结构
+### 1. 数据库管理与探索
+- **功能描述**：获取数据库的元数据、结构、ID 以及数据源信息。
+- **指令示例**：`帮我查一下 Notion 数据库 <您的数据库ID> 的结构信息`
+- **调用工具**：`get_database_info(database_id="...")`
+- **预期结果**：返回数据库的 JSON 定义，包括标题（如“工作日志”）、创建时间及关联的数据源 ID。
 
-- [notion_mcp.py](file:///d:/github_items/notionMCP/notion_mcp.py)：MCP 服务核心实现，包含所有工具定义。
-- [notion_demo.py](file:///d:/github_items/notionMCP/notion_demo.py)：Notion API 底层请求封装。
-- [features.md](file:///d:/github_items/notionMCP/features.md)：详细的功能支持列表及参数说明。
-- [bug_fixes.md](file:///d:/github_items/notionMCP/bug_fixes.md)：已知问题及其修复记录。
+### 2. 精准页面搜索
+- **功能描述**：在数据库内根据关键词或特定条件筛选页面。
+- **指令示例**：`在数据库 <您的数据库ID> 中搜一下标题包含“测试”的页面`
+- **调用工具**：`query_database(database_id="...", filter_params={"property": "...", "title": {"contains": "测试"}})`
+- **预期结果**：返回匹配的页面列表，包含页面 ID、标题摘要及访问链接。
 
-## 安全提示
+### 3. 智能页面创建
+- **功能描述**：在指定数据库中自动关联数据源并创建新页面。
+- **指令示例**：`在数据库 <您的数据库ID> 中新建页面，标题“今日代码提交”，内容“完成 MCP 接口封装”`
+- **调用工具**：`create_notion_page(database_id="...", title="...", content="...")`
+- **预期结果**：在 Notion 中成功创建记录，并返回该页面的完整 URL 链接。
 
-- **隐私保护**：严禁将包含真实 Token 或 ID 的 `.env` 文件提交至仓库。
-- **权限管理**：确保您的 Notion Integration 拥有目标数据库的读取和写入权限。
+### 4. 动态属性更新
+- **功能描述**：通过页面 ID 快速更新现有页面的富文本属性内容。
+- **指令示例**：`更新 Notion 页面 <您的页面ID> 的内容为“测试更新功能成功”`
+- **调用工具**：`update_notion_page(page_id="...", content="...")`
+- **预期结果**：目标页面属性被即时修改，并返回更新后的页面跳转链接。
+
+---
+
+## 📂 项目架构 (Architecture)
+
+```text
+.
+├── notion_mcp.py    # 核心：MCP 服务入口与工具定义
+├── notion_demo.py   # 底层：Notion API 请求封装引擎
+├── requirements.txt # 依赖：项目运行环境清单
+├── features.md      # 文档：全量功能支持手册
+└── bug_fixes.md     # 记录：已知问题修复路线图
+```
+
+---
+
+## 🛡️ 安全与合规 (Safety)
+
+- **隐私第一**：本项目严禁在代码中硬编码任何密钥。请务必妥善保管 `.env` 文件，避免提交至公开仓库。
+- **权限最小化**：建议仅为 Integration 开启必要的数据库访问权限，遵循最小授权原则。
+
+---
+
+## 🗺️ 未来路线图 (Roadmap)
+
+- [x] 动态属性识别与适配
+- [x] 多版本 API 智能路由
+- [ ] 支持 Notion 块级（Blocks）深度编辑
+- [ ] 接入多数据源联动分析
