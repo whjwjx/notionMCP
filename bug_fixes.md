@@ -68,3 +68,48 @@ MCP 服务器的启动路径（Working Directory）可能与脚本所在目录�
 
 ### 解决办法
 将 `create_notion_page` 中的 `payload` 结构修改为标准的 `{"parent": {"database_id": database_id}}`，并移除了不必要的 `data_sources` 查询逻辑，提高了执行效率和兼容性。
+
+---
+
+## 6. 复杂属性添加失败 (Status 400 / Validation Error)
+
+### 问题描述
+尝试通过 MCP 工具新增 `status` 类型属性或复杂的 `select` 属性时，API 返回 `400 validation_error`。
+
+### 原因分析
+1. **嵌套结构解析问题**：MCP 框架在处理嵌套字典参数（如 `{"status": {}}`）时，有时会将其错误地序列化为 `null`，而 Notion API 要求新增属性时必须提供空对象 `{}`。
+2. **类型限制**：`status` 属性在通过 API 新增时校验极其严格，且不如 `select` 类型灵活。
+
+### 解决办法
+1. **改用 Select 类型**：对于“状态”类需求，优先使用 `select` 类型，其 API 结构更简单且支持自定义颜色和选项。
+2. **硬编码结构化工具**：在专门的结构升级工具（如 `upgrade_database_schema`）中直接定义完整的属性 JSON 结构，避免通过动态参数传递可能导致的解析歧义。
+
+---
+
+## 7. 页面正文写入支持 (Children blocks in create_notion_page)
+
+### 问题描述
+原工具仅支持设置数据库属性，无法在创建页面时直接写入详细的工作内容（正文）。
+
+### 原因分析
+Notion API 将属性（Properties）和正文（Children/Blocks）分开处理。原 `create_notion_page` 仅封装了 `properties` 字段。
+
+### 解决办法
+1. **升级工具参数**：为 `create_notion_page` 增加了可选的 `content` 参数。
+2. **构造 Children 字段**：在请求体中动态构建 `children` 数组，将 `content` 作为第一个 `paragraph` 块写入。
+3. **新增追加工具**：实现了 `append_page_content` 工具，支持向已有页面继续追加内容块。
+
+---
+
+## 8. Docstring 中的敏感数据泄露 (Sensitive Data Leakage in Docstrings)
+
+### 问题描述
+在为 AI 优化 MCP 接口描述（Docstrings）时，示例代码中不慎包含了真实的 `database_id` 和 `page_id`。
+
+### 原因分析
+为了确保 AI 能够理解参数格式，开发过程中直接使用了测试环境下的真实 ID 作为 `参数结构` 的示例，导致这些敏感信息暴露在源代码和 MCP 注册信息中。
+
+### 解决办法
+1. **数据脱敏**：对所有 MCP 接口的 `Docstrings` 进行了审查，将真实的 UUID 替换为通用的占位符（如 `your_database_id_here`）。
+2. **规范化模板**：确立了接口描述的标准化结构（功能、入参、参数结构、返回），并在示例中使用明显的非真实数据，防止未来再次发生类似泄露。
+3. **安全审计**：执行了全局搜索，确认除了受保护的 `.env` 文件外，代码库中不再存留任何真实的集成凭据。
