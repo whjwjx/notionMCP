@@ -205,6 +205,35 @@ def infer_work_type(title, content, db_props):
     return best_match or next((o for o in options if "日常" in o), options[0] if options else None)
 
 @mcp.tool()
+def list_databases() -> str:
+    """
+    功能: 列出当前集成有权访问的所有数据库。
+    
+    返回: 数据库列表的 JSON 字符串，包含每个数据库的标题和 ID。
+    """
+    body = {
+        "filter": {
+            "value": "database",
+            "property": "object"
+        }
+    }
+    status, results = notion_request("POST", "search", body=body)
+    if status != 200:
+        return f"错误 (状态码 {status}): {json.dumps(results, indent=2, ensure_ascii=False)}"
+    
+    databases = []
+    for db in results.get("results", []):
+        title_list = db.get("title", [])
+        title = title_list[0].get("plain_text", "Untitled") if title_list else "Untitled"
+        databases.append({
+            "title": title,
+            "id": db.get("id"),
+            "url": db.get("url")
+        })
+    
+    return json.dumps(databases, indent=2, ensure_ascii=False)
+
+@mcp.tool()
 def get_database_info(database_id: str = None) -> str:
     """
     功能: 获取 Notion 数据库的完整元数据，包括标题、架构(Schema)和属性定义。
