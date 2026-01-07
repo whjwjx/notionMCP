@@ -1,4 +1,4 @@
-# Notion MCP 问题与解决记录
+# fastNotion MCP 问题与解决记录
 
 ## 1. 环境变量读取失败 (Missing NOTION_TOKEN)
 

@@ -5,7 +5,7 @@ from urllib.error import HTTPError, URLError
 from fastmcp import FastMCP
 
 # Initialize MCP
-mcp = FastMCP("Notion MCP Server")
+mcp = FastMCP("fastNotion MCP Server")
 
 API_BASE = "https://api.notion.com/v1/"
 NOTION_VERSION = "2025-09-03"

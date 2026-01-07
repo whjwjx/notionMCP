@@ -1,4 +1,4 @@
-# Notion MCP 功能清单
+# fastNotion MCP 功能清单
 
 本项目已实现的 Model Context Protocol (MCP) 接口支持以下 Notion 操作，您可以直接通过 IDE 插件以自然语言形式调用。
 

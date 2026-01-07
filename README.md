@@ -1,16 +1,16 @@
 <div align="center">
 
-# ⚡ Notion MCP Pro
+# ⚡ fastNotion MCP
 ### 极智 Notion 连接器：让 AI 助手拥有“原生” Notion 操作超能力
 
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" width="100" alt="Notion Logo" />
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg" width="100" alt="MCP Logo" />
+  <img src="https://img.shields.io/badge/Notion-API-000000?style=for-the-badge&logo=notion&logoColor=white" height="34" alt="Notion API" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://img.shields.io/badge/fastMCP-Framework-5B8DEF?style=for-the-badge&logo=python&logoColor=white" height="34" alt="fastMCP" />
 </p>
 
 <p align="center">
-  <b>Notion</b> &nbsp; 🤝 &nbsp; <b>Model Context Protocol</b>
+  <b>Notion API</b> &nbsp; 🤝 &nbsp; <b>fastMCP</b>
 </p>
 
 <p align="center">
@@ -20,20 +20,14 @@
   <img src="https://img.shields.io/badge/VS_Code-007ACC?style=for-the-badge&logo=visual-studio-code&logoColor=white" />
 </p>
 
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white" />
-  <img src="https://img.shields.io/badge/MCP-Protocol-orange?style=for-the-badge&logo=anthropic&logoColor=white" />
-</p>
-
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![MCP Protocol](https://img.shields.io/badge/Protocol-MCP-orange.svg)](https://modelcontextprotocol.io/)
+[![fastMCP](https://img.shields.io/badge/fastMCP-Framework-5B8DEF.svg)](https://github.com/jlowin/fastmcp)
 [![Notion API](https://img.shields.io/badge/Notion-API-black.svg)](https://developers.notion.com/)
 
 ---
 
-**Notion MCP** 是一个让你的 AI 助手（Trae/Cursor/Claude）真正“读懂”并“操作” Notion 的桥梁。
+**fastNotion MCP** 基于 fastMCP 打造，让你的 AI 助手（Trae/Cursor/Claude）真正“读懂”并“操作” Notion。
 
 </div>
 
