@@ -4,11 +4,17 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from fastmcp import FastMCP
 
+from datetime import datetime
+
 # Initialize MCP
 mcp = FastMCP("fastNotion MCP Server")
 
 API_BASE = "https://api.notion.com/v1/"
 NOTION_VERSION = "2025-09-03"
+
+def get_now_str():
+    """Get current time in ISO 8601 format for Notion date property."""
+    return datetime.now().strftime("%Y-%m-%d")
 
 def get_token():
     """Retrieve Notion token from environment variables."""
@@ -133,14 +139,15 @@ def query_database(database_id: str = None, filter_params: dict = None) -> str:
     return json.dumps(results, indent=2, ensure_ascii=False)
 
 @mcp.tool
-def create_notion_page(database_id: str = None, title: str = "", content: str = "", work_prop: str = "Work Content") -> str:
+def create_notion_page(database_id: str = None, title: str = "", content: str = "", category: str = "日常文档记录", work_prop: str = "Work Content") -> str:
     """
-    Create a new page in a Notion database.
+    Create a new page in a Notion database with automatic timestamp and category.
     
     Args:
         database_id: The ID of the target Notion database. If not provided, uses the default ID from configuration.
         title: The title of the new page.
-        content: The text content to put in the 'Work Content' (or specified) property.
+        content: The text content to put in the 'Work Content' property.
+        category: The category of the work (e.g., '小程序端代码修改', 'pc端管理系统', 'FastAPI后台系统', '日常文档记录').
         work_prop: The name of the property to store the content (default: 'Work Content').
     """
     if not database_id:
@@ -151,7 +158,10 @@ def create_notion_page(database_id: str = None, title: str = "", content: str = 
     # 1. Find title property name
     title_prop = find_title_property_name(database_id)
     
-    # 2. Construct payload (Standard database parent)
+    # 2. Format content with category
+    full_content = f"【分类：{category}】\n\n{content}"
+    
+    # 3. Construct payload (Standard database parent)
     payload = {
         "parent": {
             "database_id": database_id
@@ -161,7 +171,10 @@ def create_notion_page(database_id: str = None, title: str = "", content: str = 
                 "title": [{"type": "text", "text": {"content": title}}]
             },
             work_prop: {
-                "rich_text": [{"type": "text", "text": {"content": content}}]
+                "rich_text": [{"type": "text", "text": {"content": full_content}}]
+            },
+            "记录时间": {
+                "date": {"start": get_now_str()}
             }
         }
     }
