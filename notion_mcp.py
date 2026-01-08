@@ -7,11 +7,6 @@ import requests
 from datetime import datetime, timedelta, timezone
 from mcp.server.fastmcp import FastMCP
 import pypinyin
-import nest_asyncio
-
-# 解决在部分云端环境或异步环境中 "Already running asyncio" 的问题
-nest_asyncio.apply()
-
 # Initialize MCP
 mcp = FastMCP("Notion MCP Server")
 
@@ -560,8 +555,12 @@ def upgrade_database_schema(database_id: str = None) -> str:
 
 if __name__ == "__main__":
     import asyncio
+    import nest_asyncio
     
-    # 获取或创建事件循环
+    # 仅在作为脚本直接运行时应用补丁
+    nest_asyncio.apply()
+    
+    # 检查是否已在异步循环中
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -569,7 +568,7 @@ if __name__ == "__main__":
 
     if loop and loop.is_running():
         # 如果已经在运行循环中（如云端环境），则不重复启动
-        print("检测到正在运行的事件循环，跳过 mcp.run()", file=sys.stderr)
+        print("检测到正在运行的事件循环，跳过 mcp.run()，由平台接管", file=sys.stderr)
     else:
         # 只有在没有运行循环时（如本地直接运行）才启动
         try:
@@ -580,6 +579,7 @@ if __name__ == "__main__":
             print(f"📊 默认数据库: {mask_id(db_id)}", file=sys.stderr)
             print("✅ 服务已就绪，正在监听 MCP 请求 (stdio 模式)", file=sys.stderr)
             print("=" * 50, file=sys.stderr)
+            # 本地运行使用默认的 stdio
             mcp.run()
         except RuntimeError as e:
             if "Already running asyncio" in str(e):
