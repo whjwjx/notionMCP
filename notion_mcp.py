@@ -16,8 +16,9 @@ API_BASE = "https://api.notion.com/v1/"
 DEFAULT_NOTION_VERSION = "2022-06-28"
 
 def get_now_str():
-    """Get current time in ISO 8601 format for Notion date property."""
-    return datetime.now().strftime("%Y-%m-%d")
+    """Get current time in ISO 8601 format for Notion date property (Beijing time)."""
+    tz_beijing = timezone(timedelta(hours=8))
+    return datetime.now(tz_beijing).isoformat()
 
 def mask_id(id_str):
     """脱敏处理 ID，仅保留前后 4 位。"""
@@ -100,79 +101,121 @@ def find_title_property_name(database_id):
                 return name
     return "Name"  # Default fallback
 
-def normalize_properties(db_id, input_props):
+def normalize_properties(db_id, input_props, db_props=None):
     """
     智能属性转换：
-    1. 将拼音或不完全匹配的属性名映射到数据库实际属性名。
+    1. 将输入属性名映射到数据库实际属性名（支持拼音、别名、大小写及模糊匹配）。
     2. 将简单的字符串值包装成 Notion 要求的复杂 JSON 结构。
     """
     if not input_props:
         return {}
     
-    status, db = notion_request("GET", f"databases/{db_id}")
-    if status != 200:
-        return input_props # 失败则原样返回
+    # 如果没有传入 db_props，则实时从 Notion 获取最新架构
+    if db_props is None:
+        status, db = notion_request("GET", f"databases/{db_id}")
+        if status != 200:
+            return input_props 
+        db_props = db.get("properties", {})
     
-    db_props = db.get("properties", {})
     normalized = {}
     
-    # 建立拼音到实际名称的映射
+    def get_clean_key(text):
+        return text.lower().replace(" ", "").replace("_", "").replace("-", "")
+
     def get_pinyin(text):
-        return "".join(pypinyin.lazy_pinyin(text, style=pypinyin.Style.NORMAL)).lower()
+        return "".join(pypinyin.lazy_pinyin(text.lower()))
+
+    # 建立多维度映射索引
+    name_map = {}
+    for name in db_props.keys():
+        clean_name = get_clean_key(name)
+        py_name = get_pinyin(name)
+        name_map[clean_name] = name
+        name_map[py_name] = name
+
+    # 常见别名映射 (语义增强)
+    alias_map = {
+        "content": ["workcontent", "summary", "description", "desc", "note", "内容", "描述", "备注", "工作内容", "detail"],
+        "status": ["state", "zhuangtai", "状态", "进度", "phase"],
+        "date": ["time", "riqi", "shijian", "日期", "时间", "when"],
+        "type": ["category", "worktype", "leixing", "类型", "工作类型", "tag"]
+    }
     
-    py_map = {get_pinyin(name): name for name in db_props.keys()}
-    
+    # 逆向别名索引
+    reverse_alias = {}
+    for standard, aliases in alias_map.items():
+        for alias in aliases:
+            reverse_alias[get_clean_key(alias)] = standard
+
+    # 预先按类型对数据库属性进行分组，用于语义推断
+    props_by_type = {}
+    for name, spec in db_props.items():
+        ptype = spec.get("type")
+        if ptype not in props_by_type:
+            props_by_type[ptype] = []
+        props_by_type[ptype].append(name)
+
     for key, value in input_props.items():
-        # 1. 尝试直接匹配或拼音匹配属性名
-        target_key = None
-        if key in db_props:
-            target_key = key
-        else:
-            py_key = key.lower().replace("_", "")
-            if py_key in py_map:
-                target_key = py_map[py_key]
+        clean_key = get_clean_key(key)
+        py_key = get_pinyin(key)
         
+        # 1. 优先级最高：直接匹配 (含大小写/空格忽略/拼音)
+        target_key = name_map.get(clean_key) or name_map.get(py_key)
+        
+        # 2. 优先级中等：别名逻辑
         if not target_key:
-            normalized[key] = value # 没找到匹配，原样保留
+            standard_term = reverse_alias.get(clean_key)
+            if standard_term:
+                target_key = next((name for name in db_props.keys() if standard_term in get_clean_key(name) or standard_term in get_pinyin(name)), None)
+            
+            # 模糊匹配：输入 key 包含在某个属性名中
+            if not target_key:
+                target_key = next((name for name in db_props.keys() if clean_key in get_clean_key(name) or clean_key in get_pinyin(name)), None)
+
+        # 3. 优先级最低：语义类型推断 (当名称完全无法对应时)
+        if not target_key:
+            if clean_key in ["content", "desc", "note"] and len(props_by_type.get("rich_text", [])) == 1:
+                target_key = props_by_type["rich_text"][0]
+            elif clean_key in ["status", "state"] and len(props_by_type.get("status", [])) == 1:
+                target_key = props_by_type["status"][0]
+            elif clean_key in ["date", "time"] and len(props_by_type.get("date", [])) == 1:
+                target_key = props_by_type["date"][0]
+
+        if not target_key:
+            normalized[key] = value 
             continue
             
-        # 2. 检查值是否需要包装
-        prop_type = db_props[target_key].get("type")
+        prop_info = db_props[target_key]
+        prop_type = prop_info.get("type")
         
-        # 如果值已经是字典且包含类型键，说明已经是 Notion 格式
+        # 已经包装好的结构不再包装
         if isinstance(value, dict) and (prop_type in value or "type" in value):
             normalized[target_key] = value
             continue
             
-        # 根据类型包装简单值
+        # 包装简单值
         if prop_type == "select":
-            # 支持传入字符串作为选项名
-            if isinstance(value, str):
-                normalized[target_key] = {"select": {"name": value}}
-            else:
-                normalized[target_key] = value
+            normalized[target_key] = {"select": {"name": str(value)}} if value else None
         elif prop_type == "multi_select":
             if isinstance(value, list):
-                normalized[target_key] = {"multi_select": [{"name": v} for v in value]}
-            elif isinstance(value, str):
-                normalized[target_key] = {"multi_select": [{"name": value}]}
+                normalized[target_key] = {"multi_select": [{"name": str(v)} for v in value]}
             else:
-                normalized[target_key] = value
+                normalized[target_key] = {"multi_select": [{"name": str(value)}]}
         elif prop_type == "rich_text":
-            if isinstance(value, str):
-                normalized[target_key] = {"rich_text": [{"text": {"content": value}}]}
-            else:
-                normalized[target_key] = value
+            normalized[target_key] = {"rich_text": [{"text": {"content": str(value)}}]}
+        elif prop_type == "title":
+            normalized[target_key] = {"title": [{"text": {"content": str(value)}}]}
         elif prop_type == "date":
             if isinstance(value, str):
-                normalized[target_key] = {"date": {"start": value}}
+                # 增强日期处理：支持关键字和自动时间填充
+                date_val = value
+                if value.lower() in ["now", "today", "当前时间", "今天"]:
+                    date_val = get_now_str()
+                normalized[target_key] = {"date": {"start": date_val}}
             else:
                 normalized[target_key] = value
         elif prop_type == "status":
-            if isinstance(value, str):
-                normalized[target_key] = {"status": {"name": value}}
-            else:
-                normalized[target_key] = value
+            normalized[target_key] = {"status": {"name": str(value)}}
         else:
             normalized[target_key] = value
             
@@ -180,20 +223,24 @@ def normalize_properties(db_id, input_props):
 
 def infer_work_type(title, content, db_props):
     """
-    根据标题和正文内容智能预测“工作类型”。
+    根据标题和正文内容智能预测“Work Type”。
     """
     text = (title + (content or "")).lower()
     
     # 定义关键字映射
     mapping = {
-        "📱 小程序端": ["小程序", "miniprogram", "weixin", "微信"],
-        "💻 vue后台web端": ["vue", "web", "前端", "css", "html", "js", "ts", "页面", "组件", "侧边栏"],
-        "🔌 fastAPI后台接口端": ["fastapi", "api", "接口", "后端", "python", "数据库", "db", "server", "服务端"],
-        "📝 日常记录": ["日常", "记录", "测试", "总结", "笔记", "mcp"]
+        "📱 小程序端": ["miniprogram", "weixin", "微信", "mp"],
+        "💻 vue后台web端": ["vue", "web", "frontend", "前端", "css", "html", "js", "ts", "page"],
+        "🔌 fastAPI后台接口端": ["fastapi", "api", "backend", "python", "database", "server"],
+        "📝 日常记录": ["daily", "routine", "日常", "记录", "test", "summary", "mcp"]
     }
     
-    # 检查数据库中实际存在的选项名（防止带 emoji 的名称不匹配）
-    work_type_prop = db_props.get("工作类型", {})
+    # 动态寻找“Work Type”属性名
+    work_type_attr = next((name for name in db_props.keys() if name.lower() in ["work type", "work_type", "工作类型"]), None)
+    if not work_type_attr:
+        return None
+
+    work_type_prop = db_props.get(work_type_attr, {})
     options = [opt.get("name") for opt in work_type_prop.get("select", {}).get("options", [])]
     
     best_match = None
@@ -210,7 +257,7 @@ def infer_work_type(title, content, db_props):
             max_hits = hits
             best_match = actual_name
             
-    return best_match or next((o for o in options if "日常" in o), options[0] if options else None)
+    return best_match or next((o for o in options if "Daily" in o or "日常" in o), options[0] if options else None)
 
 @mcp.tool()
 def list_databases() -> str:
@@ -342,47 +389,82 @@ def create_notion_page(database_id: str = None, title: str = "", properties: dic
     if not db_id:
         return "Error: No database_id provided."
 
-    title_prop = find_title_property_name(db_id)
+    # 1. 实时获取数据库最新架构 (核心优化：确保每次操作前同步最新列名)
+    status_db, db_meta = notion_request("GET", f"databases/{db_id}")
+    if status_db != 200:
+        return f"Error fetching database metadata: {json.dumps(db_meta)}"
     
-    payload_props = {
-        title_prop: {"title": [{"text": {"content": title}}]}
-    }
-
-    # 自动设置记录时间 (北京时间 UTC+8)
-    tz_beijing = timezone(timedelta(hours=8))
-    now_iso = datetime.now(tz_beijing).isoformat()
-    # 检查数据库中是否存在“记录时间”属性
-    status_check, db_info = notion_request("GET", f"databases/{db_id}")
-    if status_check == 200:
-        db_props = db_info.get("properties", {})
-        if "记录时间" in db_props:
-            payload_props["记录时间"] = {"date": {"start": now_iso}}
+    db_props_meta = db_meta.get("properties", {})
+    
+    # 2. 归一化输入属性 (透传实时获取的 db_props_meta)
+    normalized_input = normalize_properties(db_id, properties or {}, db_props=db_props_meta)
+    
+    # 3. 构造最终属性 payload
+    payload_props = {}
+    
+    # 寻找标题属性名称
+    title_prop_name = next((name for name, spec in db_props_meta.items() if spec.get("type") == "title"), "Name")
+    
+    # 处理标题：优先从归一化属性中提取，其次使用 title 参数
+    if title_prop_name in normalized_input:
+        payload_props[title_prop_name] = normalized_input.pop(title_prop_name)
+    elif title:
+        payload_props[title_prop_name] = {"title": [{"text": {"content": title}}]}
+    
+    # 处理正文 (Content)：优先寻找名字匹配的属性，其次作为正文 Block
+    content_placed_in_prop = False
+    if content:
+        # 定义内容属性可能的候选名 (根据属性名来放内容)
+        content_keywords = ["内容", "正文", "描述", "备注", "summary", "content", "description", "note", "detail"]
         
-        # 智能预测工作类型
-        if properties:
-            # 如果用户没传 工作类型 或 其拼音形式，则进行预测
-            has_work_type = any(k in properties for k in ["工作类型", "gong_zuo_lei_xing", "zuo_pin_lei_xing"])
-            if not has_work_type:
-                predicted = infer_work_type(title, content, db_props)
-                if predicted:
-                    payload_props["工作类型"] = {"select": {"name": predicted}}
+        # 1. 尝试在数据库中寻找匹配这些关键词的 rich_text 属性
+        target_content_prop = next((name for name, spec in db_props_meta.items() 
+                                   if spec.get("type") == "rich_text" and 
+                                   any(kw in name.lower() or kw in "".join(pypinyin.lazy_pinyin(name.lower())) for kw in content_keywords)), None)
+        
+        if target_content_prop and target_content_prop not in normalized_input:
+            payload_props[target_content_prop] = {"rich_text": [{"text": {"content": content}}]}
+            content_placed_in_prop = True
+
+    # 4. 自动填充辅助属性 (如果数据库支持且未手动提供)
+    
+    # 记录时间 (智能寻找日期属性)
+    date_prop = next((name for name, spec in db_props_meta.items() if spec.get("type") == "date"), None)
+    if date_prop and date_prop not in payload_props and date_prop not in normalized_input:
+        payload_props[date_prop] = {"date": {"start": get_now_str()}}
+    
+    # 智能预测工作类型 (如果未手动提供)
+    select_props = [name for name, spec in db_props_meta.items() if spec.get("type") == "select"]
+    work_type_prop = next((name for name in select_props if any(kw in name.lower() or kw in "".join(pypinyin.lazy_pinyin(name.lower())) for kw in ["type", "类型"])), None)
+    
+    if work_type_prop and work_type_prop not in normalized_input:
+        predicted = infer_work_type(title, content, db_props_meta)
+        if predicted:
+            payload_props[work_type_prop] = {"select": {"name": predicted}}
+    
+    # 5. 合并剩余属性
+    payload_props.update(normalized_input)
+    
+    # 最终检查：移除任何可能导致 Notion 报错的空值或不规范键
+    final_props = {k: v for k, v in payload_props.items() if k in db_props_meta}
+    
+    # 确保标题存在 (兜底)
+    if title_prop_name not in final_props:
+        if title:
+            final_props[title_prop_name] = {"title": [{"text": {"content": title}}]}
+        elif properties:
+             first_val = list(properties.values())[0]
+             final_props[title_prop_name] = {"title": [{"text": {"content": str(first_val)}}]}
         else:
-            # 完全没传 properties
-            predicted = infer_work_type(title, content, db_props)
-            if predicted:
-                payload_props["工作类型"] = {"select": {"name": predicted}}
-    
-    if properties:
-        # 使用智能归一化处理属性
-        normalized_props = normalize_properties(db_id, properties)
-        payload_props.update(normalized_props)
-    
+             return f"Error: Title property ('{title_prop_name}') is mandatory."
+
     payload = {
         "parent": {"database_id": db_id},
-        "properties": payload_props
+        "properties": final_props
     }
 
-    if content:
+    # 如果 content 没有被放入属性，则作为正文 Block 插入
+    if content and not content_placed_in_prop:
         payload["children"] = [
             {
                 "object": "block",
@@ -431,7 +513,7 @@ def update_notion_page(page_id: str, properties: dict) -> str:
     
     返回: 更新成功后的页面 URL。
     """
-    # 获取页面所属的数据库 ID
+    # 获取页面所属的数据库 ID 及其最新架构
     status_page, page_info = notion_request("GET", f"pages/{page_id}")
     if status_page != 200:
         return f"Error fetching page: {json.dumps(page_info)}"
@@ -441,7 +523,10 @@ def update_notion_page(page_id: str, properties: dict) -> str:
         # 如果不是数据库页面，直接使用原始属性
         normalized_props = properties
     else:
-        normalized_props = normalize_properties(db_id, properties)
+        # 实时获取数据库最新架构
+        status_db, db_meta = notion_request("GET", f"databases/{db_id}")
+        db_props = db_meta.get("properties", {}) if status_db == 200 else None
+        normalized_props = normalize_properties(db_id, properties, db_props=db_props)
 
     payload = {"properties": normalized_props}
     status, updated = notion_request("PATCH", f"pages/{page_id}", body=payload)
