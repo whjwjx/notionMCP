@@ -40,8 +40,17 @@
 | 🛠️ 核心功能 | 🎯 痛点解决 | 🚀 极致体验 |
 | :--- | :--- | :--- |
 | **AI 灵感落库** | 代码复盘、工作日志、AI 总结出的干货难以快速归档。 | **一键直连 Notion**，无需手动搬运，让 AI 成果瞬间转化为结构化知识。 |
-| **Schema 自适应** | 数据库字段名改了、属性变了？传统工具容易报错失效。 | **智能识别标题与属性**，无需硬编码，AI 能像人类一样理解你的表格。 |
-| **API 稳如磐石** | Notion API 版本迭代快，请求参数复杂，老代码动不动就挂。 | 内置 **API 智能路由** 与多版本兼容逻辑，长效稳定，告别 400 报错。 |
+| **Schema 自适应** | 数据库字段名改了、属性变了？传统工具容易报错失效。 | **智能识别标题与属性**，优先推荐使用**英文属性名**以获得最佳稳定性。 |
+| **API 稳如磐石** | Notion API 版本迭代快，请求参数复杂，老代码动不动就挂。 | 内置 **API 智能路由**，完美支持中英文双语环境，告别 400 报错。 |
+---
+
+## 💡 最佳实践 (Best Practices)
+
+为了确保 AI 助手能最稳定地操作您的 Notion，请遵循以下建议：
+
+1. **优先使用英文属性名**：建议将数据库列名设为英文（如 `Title`, `Status`, `Work Type`, `Date`）。
+2. **大小写与空格不敏感**：代码会自动处理 `Work Type`、`work_type` 或 `WorkType` 之间的转换。
+3. **保持必填项**：确保 `Title` 属性（Notion 的唯一必填项）在数据库中存在。
 | **开发者直供** | 小工具最怕没人维护，遇到 Bug 没人管。 | **作者深度自用**，持续进化，Bug 发现即修复，体验永远保持在第一梯队。 |
 ---
 
@@ -81,11 +90,13 @@ python notion_mcp.py
 若未提示错误（控制台保持静默即表示 `stdio` 传输已就绪），则说明配置成功。
 
 ### 4. IDE 接入 (以 Trae 为例)
-打开 Trae 的 MCP 设置（通常在 `Settings -> MCP`），添加如下 JSON 配置：
+
+#### 方案 A：本地部署接入
+如果您是在本地运行服务，请打开 Trae 的 MCP 设置（`Settings -> MCP`），添加如下 JSON 配置：
 ```json
 {
   "mcpServers": {
-    "notion-mcp": {
+    "notion-mcp-local": {
       "command": "python",
       "args": ["<您的项目绝对路径>\\notion_mcp.py"],
       "workingDirectory": "<您的项目绝对路径>",
@@ -95,6 +106,40 @@ python notion_mcp.py
 }
 ```
 *注意：请将 `<您的项目绝对路径>` 替换为您本地克隆项目的实际路径。*
+
+#### 方案 B：云端部署接入 (推荐)
+如果您希望服务 24/7 在线，且无需在本地维护 Python 环境，推荐部署至 [FastMCP Cloud](https://gofastmcp.com/)。
+
+**详细部署步骤：**
+1. **Fork 本仓库**：点击页面右上角的 `Fork` 按钮，将项目保存到您的 GitHub 账号下。
+2. **连接平台**：
+   - 登录 [FastMCP Cloud 控制台](https://fastmcp.app/)。
+   - 点击 `Create New Server`，授权并选择您刚才 Fork 的 `notionMCP` 仓库。
+3. **配置环境变量 (Secrets)**：
+   - 在部署页面的 `Environment Variables` 区域，添加以下两个必填项：
+     - `NOTION_TOKEN`: 您的 Notion Integration Token。
+     - `DATABASE_ID`: 您的目标数据库 ID。
+   - *注意：云端部署无需上传 `.env` 文件，直接在平台界面填写即可，更安全。*
+4. **设置启动入口 (Entrypoint)**：
+   - 在 `Entrypoint` 栏填写：`notion_mcp.py:mcp`（这将直接加载 MCP 对象，效率更高）。
+5. **部署并获取接入信息**：
+   - 点击 `Deploy`。部署成功后，平台会为您生成唯一的 **Server URL** 和 **Access Token**。
+6. **配置 Trae/IDE**：
+   - 将生成的 URL 和 Token 填入如下配置中：
+
+```json
+{
+  "mcpServers": {
+    "notion-mcp-cloud": {
+      "url": "https://your-app-name.fastmcp.app/mcp",
+      "headers": {
+        "Authorization": "Bearer fmcp_your_personal_access_token_here"
+      }
+    }
+  }
+}
+```
+> 💡 **安全提示**：云端部署后，任何人拥有该 URL 和 Token 都能操作您的 Notion。请务必妥善保管，不要将其泄露。
 
 ---
 
