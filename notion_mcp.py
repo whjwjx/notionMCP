@@ -559,19 +559,30 @@ def upgrade_database_schema(database_id: str = None) -> str:
     return "Database schema upgraded with '工作类型' and '状态' properties."
 
 if __name__ == "__main__":
+    import asyncio
+    
+    # 获取或创建事件循环
     try:
-        token, db_id = load_env_vars()
-        print("=" * 50, file=sys.stderr)
-        print("🚀 fastNotion MCP Server 正在启动...", file=sys.stderr)
-        print(f"📡 Notion Token: {mask_id(token)}", file=sys.stderr)
-        print(f"📊 默认数据库: {mask_id(db_id)}", file=sys.stderr)
-        print("✅ 服务已就绪，正在监听 MCP 请求 (stdio 模式)", file=sys.stderr)
-        print("=" * 50, file=sys.stderr)
-        mcp.run()
-    except RuntimeError as e:
-        if "Already running asyncio" in str(e):
-            # 如果 nest_asyncio 没能自动解决，尝试直接运行服务器逻辑
-            # 在某些特定的 CLI 环境下，mcp.run() 可能会被外部调用，这里做二次保护
-            pass
-        else:
-            raise e
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # 如果已经在运行循环中（如云端环境），则不重复启动
+        print("检测到正在运行的事件循环，跳过 mcp.run()", file=sys.stderr)
+    else:
+        # 只有在没有运行循环时（如本地直接运行）才启动
+        try:
+            token, db_id = load_env_vars()
+            print("=" * 50, file=sys.stderr)
+            print("🚀 fastNotion MCP Server 正在启动...", file=sys.stderr)
+            print(f"📡 Notion Token: {mask_id(token)}", file=sys.stderr)
+            print(f"📊 默认数据库: {mask_id(db_id)}", file=sys.stderr)
+            print("✅ 服务已就绪，正在监听 MCP 请求 (stdio 模式)", file=sys.stderr)
+            print("=" * 50, file=sys.stderr)
+            mcp.run()
+        except RuntimeError as e:
+            if "Already running asyncio" in str(e):
+                pass
+            else:
+                raise e
