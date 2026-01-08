@@ -113,3 +113,47 @@ Notion API 将属性（Properties）和正文（Children/Blocks）分开处理�
 1. **数据脱敏**：对所有 MCP 接口的 `Docstrings` 进行了审查，将真实的 UUID 替换为通用的占位符（如 `your_database_id_here`）。
 2. **规范化模板**：确立了接口描述的标准化结构（功能、入参、参数结构、返回），并在示例中使用明显的非真实数据，防止未来再次发生类似泄露。
 3. **安全审计**：执行了全局搜索，确认除了受保护的 `.env` 文件外，代码库中不再存留任何真实的集成凭据。
+
+---
+
+## 9. FastMCP Cloud 部署报错 (Already running asyncio)
+
+### 问题描述
+在 FastMCP Cloud 部署时，服务启动失败并报 `ERROR Failed to run: Already running asyncio` 和 `Runtime.ExitError`。
+
+### 原因分析
+云端部署环境（如 FastMCP Cloud）通常已经运行在一个异步事件循环中。`mcp.run()` 内部尝试启动新的事件循环，导致与现有循环冲突。
+
+### 解决办法
+1. **事件循环感知**：修改启动逻辑，通过 `asyncio.get_running_loop()` 检测当前是否已有运行中的循环。
+2. **条件启动**：如果检测到已在异步环境中，则跳过 `mcp.run()`，允许平台直接加载 `mcp` 对象；仅在本地直接执行脚本时才调用 `mcp.run()`。
+3. **Entrypoint 优化**：推荐将云端启动入口配置为 `notion_mcp.py:mcp`，绕过 `__main__` 块。
+
+---
+
+## 10. 启动时缺少提示信息 (Missing Startup Hints in Stdio Mode)
+
+### 问题描述
+本地启动 MCP 服务时，控制台没有任何反应，用户无法确认服务是否已就绪或配置是否正确。
+
+### 原因分析
+MCP 默认使用 `stdio` 传输协议。如果直接使用 `print()` 输出提示，这些内容会被发送到 `stdout`，干扰 MCP 协议的数据传输，导致客户端解析错误。
+
+### 解决办法
+1. **重定向到 Stderr**：使用 `print(..., file=sys.stderr)` 将所有启动提示、配置状态及错误警告输出到标准错误流。
+2. **信息脱敏展示**：增加启动 Banner，并对敏感的 Token 进行掩码处理（如 `ntn_...****`），既提供了反馈又保护了隐私。
+
+---
+
+## 11. 开源配置安全性与灵活性 (Open Source Configuration & Security)
+
+### 问题描述
+代码开源到 GitHub 后，如何确保他人 Fork 后能运行，同时不泄露原作者的私密 Token。
+
+### 原因分析
+硬编码 Token 或将 `.env` 提交到仓库都会导致安全风险。
+
+### 解决办法
+1. **完善 Gitignore**：确保 `.env` 被严格排除在版本控制之外。
+2. **提供配置模板**：创建 `.env.example` 文件，引导用户手动配置自己的凭证。
+3. **多级加载策略**：优化 `load_env_vars` 逻辑，优先读取系统环境变量（适合云端 Secret 管理），无果后再回退到本地 `.env` 文件。
