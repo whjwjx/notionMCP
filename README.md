@@ -61,7 +61,7 @@ pip install -r requirements.txt
 ```
 
 ### 2. 配置 Notion 凭证
-在项目根目录创建 `.env` 文件，用于存储私密配置：
+在项目根目录创建 `.env` 文件（**注意：此文件已在 `.gitignore` 中，不会被提交到仓库**），用于存储您的私密配置：
 ```env
 # 必填：Notion 机器人 Integration Token
 NOTION_TOKEN=your_integration_token_here
@@ -69,7 +69,9 @@ NOTION_TOKEN=your_integration_token_here
 # 必填：目标数据库 ID
 DATABASE_ID=your_database_id_here
 ```
-> 💡 **重要**：请确保在 Notion 数据库设置中通过 `Add connections` 邀请了您的机器人。
+> 💡 **重要**：
+> 1. 请确保在 Notion 数据库设置中通过 `Add connections` 邀请了您的机器人。
+> 2. **开源贡献者注意**：如果您 Fork 本项目，请务必根据 `.env.example` 创建您自己的 `.env` 文件。不要在代码中硬编码任何 Token。
 
 ### 3. 本地验证与启动
 在接入 IDE 前，建议手动运行脚本以确认环境与凭证无误：
