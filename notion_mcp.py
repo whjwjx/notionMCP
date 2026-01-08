@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 import requests
@@ -29,8 +30,8 @@ def load_env_vars():
     token = os.environ.get("NOTION_TOKEN")
     db_id = os.environ.get("DATABASE_ID")
     
+    # 如果系统环境变量中没有，再尝试读取本地 .env 文件
     if not token or not db_id:
-        # Try finding .env in the same directory as this script
         base_dir = os.path.dirname(os.path.abspath(__file__))
         env_path = os.path.join(base_dir, ".env")
         if os.path.exists(env_path):
@@ -46,6 +47,13 @@ def load_env_vars():
                             token = v
                         elif k == "DATABASE_ID" and not db_id:
                             db_id = v
+    
+    # 如果依然缺失，在 stderr 输出警告（有助于云端日志排查）
+    if not token:
+        print("⚠️ 警告: 未找到 NOTION_TOKEN 配置", file=sys.stderr)
+    if not db_id:
+        print("⚠️ 警告: 未找到 DATABASE_ID 配置", file=sys.stderr)
+        
     return token, db_id
 
 def notion_request(method, path, body=None, version=DEFAULT_NOTION_VERSION):
@@ -547,4 +555,11 @@ def upgrade_database_schema(database_id: str = None) -> str:
     return "Database schema upgraded with '工作类型' and '状态' properties."
 
 if __name__ == "__main__":
+    token, db_id = load_env_vars()
+    print("=" * 50, file=sys.stderr)
+    print("🚀 fastNotion MCP Server 正在启动...", file=sys.stderr)
+    print(f"📡 Notion Token: {mask_id(token)}", file=sys.stderr)
+    print(f"📊 默认数据库: {mask_id(db_id)}", file=sys.stderr)
+    print("✅ 服务已就绪，正在监听 MCP 请求 (stdio 模式)", file=sys.stderr)
+    print("=" * 50, file=sys.stderr)
     mcp.run()
