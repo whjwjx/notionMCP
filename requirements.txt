@@ -2,3 +2,4 @@ fastmcp>=0.4.1
 python-dotenv>=1.0.1
 pypinyin>=0.50.0
 requests>=2.31.0
+nest-asyncio>=1.6.0
